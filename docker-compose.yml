@@ -1,0 +1,70 @@
+version: "3.4"
+
+x-common-variables: &common-variables
+  MYSQL_USER: 'user'
+  MYSQL_PASSWORD: 'password'
+  MYSQL_DATABASE: 'twitter'
+  REACT_APP_SERVER_PORT: 8000
+
+services:
+  mysql:
+    image: mysql:5.7
+    environment:
+      MYSQL_DATABASE: 'twitter'
+      # So you don't have to use root, but you can if you like
+      MYSQL_USER: 'user'
+      # You can use whatever password you like
+      MYSQL_PASSWORD: 'password'
+      # Password for root access
+      MYSQL_ROOT_PASSWORD: 'password'
+    ports:
+      - 3306:3306
+    restart: unless-stopped
+    volumes:
+      - ./db/sample.sql:/docker-entrypoint-initdb.d/mydb.sql
+    networks:
+      - boilerplate-network
+    container_name: mydb
+
+    expose:
+      - 3306
+  server:
+    build: ./server
+    depends_on:
+      - mysql
+    expose:
+      - 8000
+    environment:
+      <<: *common-variables
+      MYSQL_HOST_IP: mysql
+    ports:
+      - 8000:8000
+    volumes:
+      - ./server:/app
+    links:
+      - mysql
+    command: npm start
+    networks:
+      - boilerplate-network
+
+  client:
+    build: ./client
+    environment:
+      <<: *common-variables
+      NODE_PATH: src
+    expose:
+      - 3000
+    ports:
+      - 3000:3000
+    volumes:
+      - ./client/src:/app/src
+    links:
+      - server
+    depends_on:
+        - server
+    command: npm start
+    networks:
+      - boilerplate-network
+networks:
+  boilerplate-network:
+    driver: bridge
